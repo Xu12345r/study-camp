@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>学科词条</title>
+<style>
+:root{--bg:#150a2e;--card:#1e1038;--card-hover:#2a1745;--line:#3b2a5e;--text:#e9d5ff;--sub:#9a86b8;--accent:#c084fc;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;min-height:100vh;}
+.wrap{max-width:960px;margin:0 auto;padding:0 16px 40px;}
+
+.topbar{position:sticky;top:0;background:rgba(21,10,46,0.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;align-items:center;gap:10px;z-index:10;}
+.topbar .back{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer;color:var(--text);font-size:13px;text-decoration:none;}
+.topbar .back:hover{background:var(--card-hover);}
+.topbar .tname{font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px;margin-right:auto;}
+.topbar .tname .dot{width:12px;height:12px;border-radius:50%;display:inline-block;}
+.topbar .tcnt{font-size:12px;color:var(--sub);}
+.topbar button{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer;font-size:13px;}
+.topbar button:hover{background:var(--card-hover);}
+
+.head{margin:20px 0 16px;}
+.head h1{font-size:26px;font-weight:800;letter-spacing:1px;}
+.head .meta{color:var(--sub);font-size:13px;margin-top:6px;}
+
+/* 标签云 */
+.cloud{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;justify-content:flex-start;}
+.term{
+  display:inline-flex;flex-direction:column;align-items:center;gap:4px;
+  padding:8px 14px;border-radius:14px;cursor:pointer;border:1px solid var(--line);
+  background:var(--card);transition:transform .1s, background .1s;line-height:1.3;
+  text-align:center;max-width:280px;
+}
+.term:hover{transform:translateY(-2px);background:var(--card-hover);}
+.term .tname{display:inline-flex;align-items:center;gap:6px;}
+.term.core .tname{font-weight:800;}
+.term .star{color:var(--accent);font-size:0.8em;}
+.term .tsub{color:#9a86b8;line-height:1.4;word-break:break-all;}
+.term .tsub .season{display:inline-block;background:#c084fc;color:#1a0b2e;border-radius:4px;padding:0 4px;font-weight:700;margin-right:3px;font-size:0.9em;}
+
+.legend{margin:20px 0 8px;color:var(--sub);font-size:12px;display:flex;gap:16px;flex-wrap:wrap;}
+.legend span{display:inline-flex;align-items:center;gap:5px;}
+.hint{color:var(--sub);font-size:13px;text-align:center;margin-top:24px;}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="back" href="index.html">← 返回</a>
+  <span class="tname"><span class="dot" id="dot"></span><span id="tname">…</span></span>
+  <span class="tcnt" id="tcnt"></span>
+  <button onclick="addAll()">🎧 全部加入</button>
+</div>
+
+<div class="wrap">
+  <div class="head">
+    <h1 id="h1">…</h1>
+    <div class="meta" id="meta"></div>
+  </div>
+  <div class="legend">
+    <span><b style="color:#c084fc">亮紫底 = 核心词条</b>（高频）</span>
+    <span>粉紫底 = 一般词条</span>
+    <span>深紫底 = 冷门词条</span>
+    <span>点词条 → 看文稿听音频</span>
+  </div>
+  <div class="cloud" id="cloud"></div>
+  <div class="hint">点击词条进入讲次页</div>
+</div>
+
+<script>
+const PL_KEY = 'dedao_playlist';
+let boardData = null;
+
+const params = new URLSearchParams(location.search);
+const boardName = params.get('board') || '';
+
+function sizeFor(count){
+  if(count>=5) return 22;   // 核心：大
+  if(count>=3) return 16;   // 一般：中
+  return 12;                 // 冷门：小
+}
+
+function colorFor(count, boardColor){
+  if(count>=5) return '#ffffff';       // 核心：白字（亮紫底上）
+  if(count>=3) return '#3b1a5e';       // 一般：深紫（粉紫底上）
+  return '#b9a8d4';                    // 冷门：灰紫（深紫底上）
+}
+
+async function init(){
+  if(!boardName){ document.getElementById('h1').textContent='未指定学科'; return; }
+  try{
+    const r = await fetch('data/boards_meta.json');
+    const data = await r.json();
+    boardData = data.boards.find(b => b.name === boardName);
+    if(!boardData){ document.getElementById('h1').textContent='找不到学科：'+boardName; return; }
+    render();
+  }catch(e){
+    document.getElementById('h1').textContent='加载失败，请通过 start.command 访问';
+  }
+}
+
+function render(){
+  document.getElementById('h1').textContent = boardData.name;
+  document.getElementById('tname').textContent = boardData.name;
+  document.getElementById('tcnt').textContent = boardData.termCount + ' 词条';
+  document.getElementById('dot').style.background = boardData.color;
+  document.getElementById('meta').textContent = boardData.name + ' · ' + boardData.termCount + ' 个词条 · 按热度分层';
+
+  const cloud = document.getElementById('cloud');
+  cloud.innerHTML = boardData.terms.map(t => {
+    const fs = sizeFor(t.count);
+    const color = colorFor(t.count, boardData.color);
+    const core = t.count >= 5;
+    const star = core ? '<span class="star" style="color:#fff">★</span>' : '';
+    const subSize = Math.max(10, Math.round(fs * 0.62));
+    const subColor = core ? 'rgba(255,255,255,0.9)' : (t.count>=3 ? '#7c5aa0' : '#9a86b8');
+    // 讲次出处小字（截断）
+    let subHtml = '';
+    if(t.讲次){
+      const short = t.讲次.length > 20 ? t.讲次.slice(0,20) + '…' : t.讲次;
+      const seasonTag = t.季 ? `<span class="season">${esc(t.季)}</span>` : '';
+      subHtml = `<span class="tsub" style="font-size:${subSize}px;color:${subColor}">${seasonTag} ${esc(short)}</span>`;
+    }
+    // 三档底色（紫色系）
+    let cardStyle;
+    if(core){
+      cardStyle = 'background:#a855f7;border-color:#a855f7;';   // 亮紫实底
+    } else if(t.count >= 3){
+      cardStyle = 'background:#e9d5ff;border-color:#d8b4fe;';   // 粉紫底
+    } else {
+      cardStyle = 'background:#2a1745;border-color:#3b2a5e;';   // 深紫底
+    }
+    return `<span class="term ${core?'core':''}" style="${cardStyle}" onclick="location.href='lecture.html?term=${encodeURIComponent(t.词条)}'">
+      <span class="tname" style="font-size:${fs}px;color:${color}">${star}${esc(t.词条)}</span>
+      ${subHtml}
+    </span>`;
+  }).join('');
+}
+
+function addAll(){
+  if(!boardData) return;
+  const pl = JSON.parse(localStorage.getItem(PL_KEY) || '[]');
+  let added = 0, noAudio = 0;
+  boardData.terms.forEach(t => {
+    if(!t.mp3){ noAudio++; return; }
+    if(pl.some(x => x.词条 === t.词条)) return;
+    pl.push(t);
+    added++;
+  });
+  localStorage.setItem(PL_KEY, JSON.stringify(pl));
+  alert('已加入 ' + added + ' 篇到播放列表' + (noAudio ? '（' + noAudio + ' 篇无音频已跳过）' : ''));
+}
+
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+init();
+</script>
+</body>
+</html>
