@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>播放列表</title>
+<style>
+*{box-sizing:border-box;}
+body{margin:0;background:#0a1428;color:#dce6f2;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.7;}
+a{color:#7fb3ff;}
+.topbar{position:sticky;top:0;background:#0e1c33;border-bottom:1px solid #1d3152;padding:12px 18px;display:flex;align-items:center;gap:10px;z-index:20;flex-wrap:wrap;}
+.topbar .title{font-size:17px;font-weight:700;color:#fff;margin-right:auto;}
+.topbar button{background:#16294a;color:#cfe0f5;border:1px solid #2a4470;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px;}
+.topbar button:hover{background:#1d3a66;}
+.topbar button.danger{color:#ff9a9a;border-color:#7a3a3a;}
+/* 布局：左列表 右播放 */
+.layout{display:flex;max-width:1200px;margin:0 auto;padding:16px;gap:16px;align-items:flex-start;}
+.list-panel{width:300px;flex-shrink:0;position:sticky;top:70px;max-height:calc(100vh - 90px);overflow-y:auto;}
+.play-panel{flex:1;min-width:0;}
+.card{background:#0f1c34;border:1px solid #1d3152;border-radius:12px;padding:16px 18px;margin-bottom:14px;}
+.pl-item{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:8px;cursor:pointer;margin-bottom:6px;border:1px solid transparent;}
+.pl-item:hover{background:#152540;}
+.pl-item.playing{background:#1d3a5f;border-color:#3570c9;}
+.pl-item .idx{color:#5f7da8;font-size:12px;min-width:20px;}
+.pl-item .info{flex:1;min-width:0;}
+.pl-item .info .t{font-size:14px;color:#e6eef8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pl-item .info .s{font-size:11.5px;color:#7d93b2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pl-item .del{background:none;border:none;color:#7d93b2;cursor:pointer;font-size:14px;padding:2px 6px;}
+.pl-item .del:hover{color:#ff8a8a;}
+.empty{color:#7d93b2;text-align:center;padding:40px 16px;font-size:14px;}
+.audio-card{position:sticky;top:66px;z-index:5;}
+.audio-card .now{font-size:15px;font-weight:700;color:#fff;margin-bottom:4px;}
+.audio-card .now-sub{font-size:12px;color:#8aa3c4;margin-bottom:10px;}
+.audio-card audio{width:100%;}
+.audio-card .switch-row{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;color:#9fb8dc;}
+.article h1{font-size:22px;color:#fff;border-bottom:1px solid #24395f;padding-bottom:10px;margin:0 0 16px;}
+.article h2{font-size:18px;color:#e8f0fb;margin:24px 0 10px;}
+.article h3{font-size:15px;color:#d5e4f5;margin:20px 0 8px;}
+.article p{margin:11px 0;transition:background .3s;}
+.article img{max-width:100%;border-radius:8px;margin:10px 0;}
+.article blockquote{margin:13px 0;padding:8px 16px;border-left:3px solid #3f6ab0;background:#132240;color:#a9c2e0;border-radius:0 8px 8px 0;transition:background .3s;}
+.article ul,.article ol{margin:11px 0;padding-left:22px;}
+.article li{margin:5px 0;transition:background .3s;}
+.article hr.divider{border:none;text-align:center;margin:22px 0;color:#5f7da8;}
+.article hr.divider::before{content:"✵ ✵ ✵";letter-spacing:8px;font-size:14px;}
+.article p.active,.article blockquote.active,.article li.active{background:#1d3a5f;border-radius:4px;}
+.loading{color:#8aa3c4;text-align:center;padding:50px 0;}
+#toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#1f7a4d;color:#fff;padding:10px 18px;border-radius:8px;font-size:14px;z-index:99;opacity:0;transition:opacity .3s;}
+@media(max-width:800px){.layout{flex-direction:column;}.list-panel{width:100%;position:static;max-height:none;}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <span class="title">🎧 播放列表</span>
+  <button onclick="location.href='index.html'">← 地图</button>
+  <button onclick="exportToFolder()">📲 导出到手机</button>
+  <button class="danger" onclick="clearAll()">清空</button>
+</div>
+<div class="layout">
+  <div class="list-panel card" id="listPanel"></div>
+  <div class="play-panel">
+    <div class="card audio-card" id="playerCard" style="display:none;">
+      <div class="now" id="nowTitle"></div>
+      <div class="now-sub" id="nowSub"></div>
+      <audio controls preload="metadata" id="audio"></audio>
+      <div class="switch-row">
+        <input type="checkbox" id="autoNext" checked>
+        <label for="autoNext">自动连播下一讲</label>
+      </div>
+    </div>
+    <div class="card article" id="article"><div class="loading">从列表选择一讲开始</div></div>
+  </div>
+</div>
+<div id="toast"></div>
+<script>
+const PL_KEY = 'dedao_playlist';
+let playlist = JSON.parse(localStorage.getItem(PL_KEY) || '[]');
+let currentIndex = -1;
+let blocks = [], cumRatio = [], currentBlock = -1;
+const audioEl = document.getElementById('audio');
+
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.style.opacity='1'; setTimeout(()=>t.style.opacity='0',1600); }
+function save(){ localStorage.setItem(PL_KEY, JSON.stringify(playlist)); }
+
+function inline(s){
+  s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" loading="lazy">');
+  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  return s;
+}
+function renderMD(text){
+  const lines = text.split('\n');
+  let html='', inList=null, inQuote=false, para=[];
+  const flushPara=()=>{ if(para.length){ html+='<p>'+para.map(inline).join('<br>')+'</p>'; para=[]; } };
+  const closeList=()=>{ if(inList){ html+='</'+inList+'>'; inList=null; } };
+  const closeQuote=()=>{ if(inQuote){ html+='</blockquote>'; inQuote=false; } };
+  for(const raw of lines){
+    const t=raw.trim();
+    if(!t){ flushPara(); closeList(); closeQuote(); continue; }
+    if(/^✵+$/.test(t)){ flushPara(); closeList(); closeQuote(); html+='<hr class="divider">'; continue; }
+    let m=t.match(/^(#{1,3})\s+(.*)$/);
+    if(m){ flushPara(); closeList(); closeQuote(); html+=`<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`; continue; }
+    if(t.startsWith('>')){ flushPara(); closeList(); if(!inQuote){ html+='<blockquote>'; inQuote=true; } html+=inline(t.replace(/^>\s?/,''))+'<br>'; continue; }
+    m=t.match(/^[-*]\s+(.*)$/);
+    if(m){ flushPara(); closeQuote(); if(inList!=='ul'){ closeList(); html+='<ul>'; inList='ul'; } html+='<li>'+inline(m[1])+'</li>'; continue; }
+    m=t.match(/^\d+\.\s+(.*)$/);
+    if(m){ flushPara(); closeQuote(); if(inList!=='ol'){ closeList(); html+='<ol>'; inList='ol'; } html+='<li>'+inline(m[1])+'</li>'; continue; }
+    closeList(); closeQuote(); para.push(t);
+  }
+  flushPara(); closeList(); closeQuote();
+  return html;
+}
+
+function renderList(){
+  const panel = document.getElementById('listPanel');
+  if(!playlist.length){
+    panel.innerHTML = '<div class="empty">列表还是空的。<br><br>去地图上点词条，在讲次页点「+ 播放列表」加入；<br>或在地图页用「按板块选」批量勾选。</div>';
+    return;
+  }
+  panel.innerHTML = playlist.map((item, i) =>
+    `<div class="pl-item ${i===currentIndex?'playing':''}" onclick="playItem(${i})">
+      <span class="idx">${i+1}</span>
+      <div class="info">
+        <div class="t">${escapeHtml(item.词条)}</div>
+        <div class="s">${escapeHtml(item.讲次||'')}</div>
+      </div>
+      <button class="del" onclick="event.stopPropagation();removeItem(${i})">✕</button>
+    </div>`).join('');
+}
+
+function removeItem(i){
+  playlist.splice(i,1); save();
+  if(i < currentIndex) currentIndex--;
+  else if(i === currentIndex){ currentIndex=-1; audioEl.pause(); document.getElementById('playerCard').style.display='none'; }
+  renderList();
+}
+
+function clearAll(){
+  if(!playlist.length) return;
+  if(confirm('确定清空播放列表？')){ playlist=[]; save(); currentIndex=-1; audioEl.pause(); document.getElementById('playerCard').style.display='none'; renderList(); }
+}
+
+async function playItem(i){
+  const item = playlist[i];
+  if(!item) return;
+  currentIndex = i;
+  renderList();
+  document.getElementById('playerCard').style.display = 'block';
+  document.getElementById('nowTitle').textContent = item.词条 + ' · ' + item.讲次;
+  document.getElementById('nowSub').textContent = (item.季?item.季+'　':'') + item.课程 + ' · 第' + item.序号 + '讲';
+  document.getElementById('article').innerHTML = '<div class="loading">文稿加载中…</div>';
+
+  if(item.mp3){
+    audioEl.src = item.mp3;
+    audioEl.play().catch(()=>{});
+  } else {
+    audioEl.removeAttribute('src');
+  }
+  // 加载文稿
+  try{
+    const mdText = await (await fetch(item.md)).text();
+    document.getElementById('article').innerHTML = renderMD(mdText);
+    setupSync();
+  }catch(e){
+    document.getElementById('article').innerHTML = '<div class="error">文稿加载失败</div>';
+  }
+  // 滚动列表到当前项
+  const items = document.querySelectorAll('.pl-item');
+  if(items[i]) items[i].scrollIntoView({block:'nearest'});
+}
+
+function setupSync(){
+  const article = document.getElementById('article');
+  blocks = Array.from(article.querySelectorAll('h1,h2,h3,p,blockquote,li'));
+  const weights = blocks.map(b=>b.textContent.replace(/\s/g,'').length);
+  const total = weights.reduce((a,b)=>a+b,0);
+  let cum=0; cumRatio = weights.map(w=>{ cum+=w; return total>0?cum/total:0; });
+  currentBlock=-1;
+}
+
+function syncToAudio(){
+  if(!blocks.length || !audioEl.duration) return;
+  const p = audioEl.currentTime / audioEl.duration;
+  let idx = cumRatio.findIndex(r=>r>=p);
+  if(idx<0) idx=blocks.length-1;
+  if(idx!==currentBlock){
+    if(currentBlock>=0) blocks[currentBlock].classList.remove('active');
+    currentBlock=idx; blocks[idx].classList.add('active');
+    blocks[idx].scrollIntoView({block:'center', behavior:'smooth'});
+  }
+}
+
+// 连续播放
+audioEl.addEventListener('ended', () => {
+  if(document.getElementById('autoNext').checked && currentIndex < playlist.length-1){
+    playItem(currentIndex+1);
+  }
+});
+audioEl.addEventListener('timeupdate', syncToAudio);
+
+// 导出到手机文件夹：POST 到本地 server，server 把 mp3 复制到 ~/Desktop/导出音频/
+async function exportToFolder(){
+  if(!playlist.length){ toast('列表为空'); return; }
+  toast('正在导出…');
+  try{
+    const resp = await fetch('/api/export', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(playlist.map(x => ({词条:x.词条, 讲次:x.讲次, 序号:x.序号, mp3:x.mp3})))
+    });
+    const r = await resp.json();
+    if(r.成功 !== undefined){
+      toast('已导出 ' + r.成功 + ' 篇到「导出音频」文件夹');
+      alert('✅ 已导出 ' + r.成功 + ' 篇 mp3 到：\n' + r.导出目录 + '\n\n用 AirDrop 或微信把这些文件发到手机，开车时就能连续听了。');
+    } else {
+      toast('导出失败：' + (r.error || '未知错误'));
+    }
+  }catch(e){
+    toast('导出失败：请用 start.command 启动服务（当前不是本地服务环境）');
+  }
+}
+
+function escapeHtml(s){
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+renderList();
+</script>
+</body>
+</html>
