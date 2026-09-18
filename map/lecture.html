@@ -17,6 +17,7 @@ a{color:#7fb3ff;}
 .add-btn{background:#2a5aa8;color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:14px;white-space:nowrap;}
 .add-btn:hover{background:#3570c9;}
 .add-btn.added{background:#1f7a4d;}
+.ask-ai{width:100%;margin-top:12px;background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff;border:none;border-radius:10px;padding:11px;cursor:pointer;font-size:14px;font-weight:600;}
 .wrap{max-width:760px;margin:0 auto;padding:20px 18px 80px;}
 .card{background:#0f1c34;border:1px solid #1d3152;border-radius:12px;padding:18px 20px;margin-bottom:16px;}
 .audio-card{position:sticky;top:66px;z-index:5;}
@@ -51,10 +52,11 @@ a{color:#7fb3ff;}
   <button class="add-btn" onclick="location.href='playlist.html'">📋 列表</button>
 </div>
 <div class="wrap">
-  <div class="card audio-card" id="audioCard">
-    <h2>🎧 音频</h2>
-    <div id="audioArea"><div class="loading">加载中…</div></div>
-  </div>
+<div class="card audio-card" id="audioCard">
+  <h2>🎧 音频</h2>
+  <div id="audioArea"><div class="loading">加载中…</div></div>
+  <button class="ask-ai" onclick="askAI()">🤖 问 AI万sir</button>
+</div>
   <div class="card article" id="article">
     <div class="loading">文稿加载中…</div>
   </div>
@@ -68,6 +70,11 @@ let audioEl = null;
 let blocks = [], cumRatio = [], currentBlock = -1;
 
 function goBack(){ if(history.length > 1){ history.back(); } else { location.href = 'index.html'; } }
+
+function askAI(){
+  if(term){ location.href = 'https://think.techdly.com/?q=' + encodeURIComponent(term); }
+  else { toast('请先加载词条'); }
+}
 
 function toast(msg){
   const t = document.getElementById('toast');
