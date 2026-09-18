@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>精英日课 · 知识库</title>
+<style>
+:root{
+  --bg:#150a2e; --card:#1e1038; --card-hover:#2a1745; --line:#3b2a5e;
+  --text:#e9d5ff; --sub:#9a86b8; --accent:#c084fc;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;min-height:100vh;}
+.wrap{max-width:960px;margin:0 auto;padding:0 16px 40px;}
+
+/* 顶栏 */
+.topbar{position:sticky;top:0;background:rgba(21,10,46,0.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;align-items:center;gap:10px;z-index:10;}
+.topbar .title{font-size:17px;font-weight:700;margin-right:auto;color:#e9d5ff;}
+.topbar .title .dot{color:var(--accent);}
+.topbar button{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px 13px;cursor:pointer;font-size:13px;}
+.topbar button:hover{background:var(--card-hover);}
+.topbar .badge{background:var(--accent);color:#fff;border-radius:10px;padding:0 7px;font-size:11px;font-weight:700;margin-left:5px;}
+
+/* 搜索 */
+.search{margin:16px 0 8px;}
+.search input{width:100%;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 16px;font-size:15px;color:var(--text);outline:none;}
+.search input:focus{border-color:#3570c9;}
+.search input::placeholder{color:var(--sub);}
+.search-results{display:none;margin-top:8px;}
+.search-results.show{display:block;}
+.search-results .sr-term{display:inline-block;margin:4px;padding:6px 12px;background:var(--card);border:1px solid var(--line);border-radius:8px;cursor:pointer;font-size:14px;color:var(--text);}
+.search-results .sr-term:hover{background:var(--card-hover);}
+.search-results .sr-term .sr-board{color:var(--sub);font-size:11px;margin-left:6px;}
+
+/* 板块网格 */
+.subtitle{margin:20px 0 12px;font-size:14px;color:var(--sub);}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+@media(min-width:640px){.grid{grid-template-columns:repeat(3,1fr);}}
+@media(min-width:900px){.grid{grid-template-columns:repeat(4,1fr);}}
+
+.board-card{
+  background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:16px 14px;cursor:pointer;position:relative;overflow:hidden;
+  transition:transform .12s, background .12s;text-decoration:none;color:inherit;display:block;
+}
+.board-card:hover{background:var(--card-hover);transform:translateY(-2px);}
+.board-card .bar{position:absolute;left:0;top:0;bottom:0;width:4px;}
+.board-card .name{font-size:16px;font-weight:700;line-height:1.3;margin-bottom:6px;}
+.board-card .cnt{font-size:12px;color:var(--sub);}
+
+/* 播放列表提示 */
+.hint{color:var(--sub);font-size:13px;text-align:center;margin-top:24px;}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <span class="title">精英日课<span class="dot">·</span>知识库</span>
+  <button onclick="location.href='playlist.html'">🎧 播放列表<span class="badge" id="plBadge">0</span></button>
+</div>
+
+<div class="wrap">
+  <div class="search">
+    <input id="searchInput" type="text" placeholder="🔍 搜索 912 个词条…（输入关键词）" autocomplete="off">
+    <div class="search-results" id="searchResults"></div>
+  </div>
+
+  <div class="subtitle" id="subtitle">全部 23 个学科</div>
+  <div class="grid" id="grid"></div>
+  <div class="hint">点学科进入 → 点词条看文稿听音频</div>
+</div>
+
+<script>
+const PL_KEY = 'dedao_playlist';
+let allBoards = [];
+
+function updateBadge(){
+  const pl = JSON.parse(localStorage.getItem(PL_KEY) || '[]');
+  document.getElementById('plBadge').textContent = pl.length;
+}
+
+async function init(){
+  try{
+    const r = await fetch('data/boards_meta.json');
+    const data = await r.json();
+    allBoards = data.boards;
+    renderGrid(allBoards);
+  }catch(e){
+    document.getElementById('grid').innerHTML = '<div class="hint">加载失败：请通过 start.command 启动服务访问</div>';
+  }
+}
+
+function renderGrid(boards){
+  const grid = document.getElementById('grid');
+  grid.innerHTML = boards.map(b => `
+    <a class="board-card" href="board.html?board=${encodeURIComponent(b.name)}">
+      <div class="bar" style="background:${b.color}"></div>
+      <div class="name">${esc(b.name)}</div>
+      <div class="cnt">${b.termCount} 个词条</div>
+    </a>
+  `).join('');
+}
+
+// 搜索
+const input = document.getElementById('searchInput');
+const resultsBox = document.getElementById('searchResults');
+input.addEventListener('input', function(){
+  const q = this.value.trim();
+  if(!q){ resultsBox.classList.remove('show'); resultsBox.innerHTML=''; renderGrid(allBoards); document.getElementById('subtitle').textContent='全部 23 个学科'; return; }
+  const matches = [];
+  allBoards.forEach(b => {
+    b.terms.forEach(t => {
+      if(t.词条.includes(q) || t.讲次.includes(q)){
+        matches.push({...t, board:b.name, color:b.color});
+      }
+    });
+  });
+  document.getElementById('grid').style.display = matches.length ? 'none' : '';
+  document.getElementById('subtitle').textContent = matches.length ? `搜索「${q}」结果 ${matches.length} 个` : '全部 23 个学科';
+  resultsBox.classList.add('show');
+  resultsBox.innerHTML = matches.length
+    ? matches.slice(0,50).map(m => `<span class="sr-term" onclick="location.href='lecture.html?term=${encodeURIComponent(m.词条)}'">${esc(m.词条)}<span class="sr-board">${esc(m.board)}</span></span>`).join('')
+    : '<div class="hint">没有匹配的词条</div>';
+});
+input.addEventListener('blur', function(){
+  setTimeout(()=>{ if(!this.value.trim()){ resultsBox.classList.remove('show'); resultsBox.innerHTML=''; document.getElementById('grid').style.display=''; } }, 200);
+});
+
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+updateBadge();
+init();
+</script>
+</body>
+</html>
