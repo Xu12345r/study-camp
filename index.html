@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>学习营 · 读书·听书·思考·输出</title>
+<meta name="description" content="学习营——万维钢知识地图、思维教练、听书、电子书、输出，一个自我精进的入口。">
+<meta property="og:title" content="学习营 · 自我精进的入口">
+<meta property="og:description" content="知识地图 · 思维教练 · 听书 · 电子书 · 输出">
+<meta property="og:type" content="website">
+<style>
+:root{
+  --bg:#150a2e;          /* 科技感深紫 */
+  --bg2:#0d0620;
+  --card:#1e1038;
+  --line:#3b2a5e;
+  --text:#e9d5ff;        /* 浅紫 */
+  --sub:#9a86b8;
+  --accent:#c084fc;      /* 亮紫 */
+  --accent2:#a855f7;
+  --gold:#f0c674;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  background:radial-gradient(1200px 600px at 50% -10%, #2a1650 0%, var(--bg) 55%, var(--bg2) 100%);
+  color:var(--text);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:640px;margin:0 auto;padding:32px 20px 48px;}
+
+/* 顶部 */
+.hero{text-align:center;margin-bottom:32px;}
+.logo{
+  width:64px;height:64px;margin:0 auto 16px;border-radius:18px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex;align-items:center;justify-content:center;
+  font-size:30px;box-shadow:0 8px 28px rgba(168,85,247,.45);
+}
+.hero h1{font-size:28px;font-weight:700;letter-spacing:2px;}
+.hero .sub{color:var(--sub);font-size:14px;margin-top:8px;letter-spacing:.5px;}
+.hero .tag{
+  display:inline-block;margin-top:14px;padding:4px 14px;border-radius:999px;
+  font-size:12px;color:var(--accent);border:1px solid var(--line);background:rgba(192,132,252,.08);
+}
+
+/* 卡片网格 */
+.grid{display:flex;flex-direction:column;gap:14px;}
+.card{
+  display:flex;align-items:center;gap:16px;
+  background:var(--card);border:1px solid var(--line);border-radius:16px;
+  padding:18px 18px;text-decoration:none;color:inherit;
+  transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease;
+  position:relative;overflow:hidden;
+}
+.card:active{transform:scale(.98);}
+.card.live{cursor:pointer;}
+.card.live:hover{border-color:var(--accent);box-shadow:0 6px 22px rgba(168,85,247,.22);}
+.card .ico{
+  width:48px;height:48px;flex:0 0 48px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;font-size:24px;
+  background:rgba(192,132,252,.12);
+}
+.card .meta{flex:1;min-width:0;}
+.card .meta .name{font-size:17px;font-weight:600;display:flex;align-items:center;gap:8px;}
+.card .meta .desc{font-size:13px;color:var(--sub);margin-top:4px;line-height:1.5;}
+.card .badge{
+  flex:0 0 auto;font-size:11px;padding:3px 10px;border-radius:999px;
+  white-space:nowrap;
+}
+.badge.on{background:rgba(240,198,116,.15);color:var(--gold);border:1px solid rgba(240,198,116,.35);}
+.badge.soon{background:rgba(154,134,184,.12);color:var(--sub);border:1px solid var(--line);}
+.card .arrow{color:var(--sub);font-size:18px;flex:0 0 auto;}
+.card.soon-card{opacity:.75;}
+
+/* 底部 */
+.footer{text-align:center;margin-top:36px;color:var(--sub);font-size:12px;line-height:1.8;}
+.footer .dot{color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="logo">📚</div>
+    <h1>学习营</h1>
+    <div class="sub">读书 · 听书 · 思考 · 输出</div>
+    <div class="tag">一个自我精进的入口</div>
+  </div>
+
+  <div class="grid">
+
+    <a class="card live" href="/map/">
+      <div class="ico">🗺️</div>
+      <div class="meta">
+        <div class="name">知识地图 <span class="badge on">已上线</span></div>
+        <div class="desc">万维钢 · 22学科 912词条，点词条看文稿、听音频</div>
+      </div>
+      <div class="arrow">›</div>
+    </a>
+
+    <a class="card live" href="https://think.techdly.com" target="_blank" rel="noopener">
+      <div class="ico">🧠</div>
+      <div class="meta">
+        <div class="name">思维教练 <span class="badge on">已上线</span></div>
+        <div class="desc">AI万sir——跟万维钢的AI分身聊聊你的困惑</div>
+      </div>
+      <div class="arrow">›</div>
+    </a>
+
+    <div class="card soon-card">
+      <div class="ico">🎧</div>
+      <div class="meta">
+        <div class="name">听书</div>
+        <div class="desc">万维钢全部课程音频，通勤路上随时听</div>
+      </div>
+      <div class="badge soon">敬请期待</div>
+    </div>
+
+    <div class="card soon-card">
+      <div class="ico">📖</div>
+      <div class="meta">
+        <div class="name">电子书</div>
+        <div class="desc">读过的书，沉淀成自己的笔记与卡片</div>
+      </div>
+      <div class="badge soon">敬请期待</div>
+    </div>
+
+    <div class="card soon-card">
+      <div class="ico">✍️</div>
+      <div class="meta">
+        <div class="name">输出</div>
+        <div class="desc">自己的思考与文章，知识晶体持续积累</div>
+      </div>
+      <div class="badge soon">敬请期待</div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    学习营 <span class="dot">·</span> study.techdly.com<br>
+    知识地图 <span class="dot">·</span> 思维教练 <span class="dot">·</span> 听书 <span class="dot">·</span> 电子书 <span class="dot">·</span> 输出
+  </div>
+
+</div>
+</body>
+</html>
