@@ -186,6 +186,7 @@ async function main(){
       document.getElementById('article').innerHTML = '<div class="error">该词条尚未匹配到讲次，可先在地图上查看其它词条。</div>';
       return;
     }
+    info['词条'] = term;
     currentInfo = info;
     document.getElementById('termSub').textContent =
       (info.季 ? info.季 + '　' : '') + info.课程 + ' · 第' + info.序号 + '讲 · ' + info.讲次;
