@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>讲次</title>
+<style>
+*{box-sizing:border-box;}
+body{margin:0;background:#0a1428;color:#dce6f2;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.8;}
+a{color:#7fb3ff;}
+.topbar{position:sticky;top:0;background:#0e1c33;border-bottom:1px solid #1d3152;padding:14px 18px;display:flex;align-items:center;gap:12px;z-index:10;}
+.back{background:#16294a;color:#cfe0f5;border:1px solid #2a4470;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:14px;white-space:nowrap;}
+.back:hover{background:#1d3a66;}
+.top-title{flex:1;min-width:0;}
+.term-name{font-size:19px;font-weight:700;color:#fff;margin:0;}
+.sub{font-size:12.5px;color:#8aa3c4;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.add-btn{background:#2a5aa8;color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:14px;white-space:nowrap;}
+.add-btn:hover{background:#3570c9;}
+.add-btn.added{background:#1f7a4d;}
+.wrap{max-width:760px;margin:0 auto;padding:20px 18px 80px;}
+.card{background:#0f1c34;border:1px solid #1d3152;border-radius:12px;padding:18px 20px;margin-bottom:16px;}
+.audio-card{position:sticky;top:66px;z-index:5;}
+.audio-card h2{font-size:15px;margin:0 0 10px;color:#9fb8dc;font-weight:600;}
+.audio-card audio{width:100%;}
+.no-audio{color:#7d93b2;font-size:13px;padding:8px 0;}
+.article h1{font-size:24px;color:#fff;border-bottom:1px solid #24395f;padding-bottom:12px;margin:0 0 18px;}
+.article h2{font-size:19px;color:#e8f0fb;margin:26px 0 12px;}
+.article h3{font-size:16px;color:#d5e4f5;margin:22px 0 10px;}
+.article p{margin:12px 0;transition:background .3s;}
+.article img{max-width:100%;border-radius:8px;margin:10px 0;}
+.article blockquote{margin:14px 0;padding:8px 16px;border-left:3px solid #3f6ab0;background:#132240;color:#a9c2e0;border-radius:0 8px 8px 0;transition:background .3s;}
+.article ul,.article ol{margin:12px 0;padding-left:24px;}
+.article li{margin:6px 0;transition:background .3s;}
+.article hr.divider{border:none;text-align:center;margin:24px 0;color:#5f7da8;}
+.article hr.divider::before{content:"✵ ✵ ✵";letter-spacing:8px;font-size:14px;}
+/* 同步高亮 */
+.article p.active,.article blockquote.active,.article li.active{background:#1d3a5f;border-radius:4px;}
+.loading{text-align:center;color:#8aa3c4;padding:60px 0;}
+.error{color:#ff8a8a;text-align:center;padding:40px 0;}
+#toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#1f7a4d;color:#fff;padding:10px 18px;border-radius:8px;font-size:14px;z-index:99;opacity:0;transition:opacity .3s;}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <button class="back" onclick="goBack()">← 返回</button>
+  <div class="top-title">
+    <div class="term-name" id="termName">加载中…</div>
+    <div class="sub" id="termSub"></div>
+  </div>
+  <button class="add-btn" id="addBtn" onclick="togglePlaylist()">+ 播放列表</button>
+</div>
+<div class="wrap">
+  <div class="card audio-card" id="audioCard">
+    <h2>🎧 音频</h2>
+    <div id="audioArea"><div class="loading">加载中…</div></div>
+  </div>
+  <div class="card article" id="article">
+    <div class="loading">文稿加载中…</div>
+  </div>
+</div>
+<div id="toast"></div>
+<script>
+const params = new URLSearchParams(location.search);
+const term = params.get('term') || '';
+let currentInfo = null;
+let audioEl = null;
+let blocks = [], cumRatio = [], currentBlock = -1;
+
+function goBack(){ if(history.length > 1){ history.back(); } else { location.href = 'index.html'; } }
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.opacity = '1';
+  setTimeout(()=>t.style.opacity = '0', 1600);
+}
+
+function getPlaylist(){ return JSON.parse(localStorage.getItem('dedao_playlist') || '[]'); }
+function setPlaylist(pl){ localStorage.setItem('dedao_playlist', JSON.stringify(pl)); }
+
+function refreshAddBtn(){
+  if(!currentInfo) return;
+  const pl = getPlaylist();
+  const inList = pl.some(x => x.词条 === currentInfo.词条);
+  const btn = document.getElementById('addBtn');
+  btn.textContent = inList ? '✓ 已加入' : '+ 播放列表';
+  btn.classList.toggle('added', inList);
+}
+
+function togglePlaylist(){
+  if(!currentInfo) return;
+  const pl = getPlaylist();
+  const i = pl.findIndex(x => x.词条 === currentInfo.词条);
+  if(i >= 0){ pl.splice(i, 1); setPlaylist(pl); toast('已从播放列表移除'); }
+  else { pl.push(currentInfo); setPlaylist(pl); toast('已加入播放列表'); }
+  refreshAddBtn();
+}
+
+function inline(s){
+  s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" loading="lazy">');
+  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  return s;
+}
+
+function renderMD(text){
+  const lines = text.split('\n');
+  let html = '';
+  let inList = null, inQuote = false, para = [];
+  const flushPara = () => { if(para.length){ html += '<p>' + para.map(inline).join('<br>') + '</p>'; para = []; } };
+  const closeList = () => { if(inList){ html += '</' + inList + '>'; inList = null; } };
+  const closeQuote = () => { if(inQuote){ html += '</blockquote>'; inQuote = false; } };
+
+  for(const raw of lines){
+    const t = raw.trim();
+    if(!t){ flushPara(); closeList(); closeQuote(); continue; }
+    if(/^✵+$/.test(t)){ flushPara(); closeList(); closeQuote(); html += '<hr class="divider">'; continue; }
+    let m = t.match(/^(#{1,3})\s+(.*)$/);
+    if(m){ flushPara(); closeList(); closeQuote();
+      html += `<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`; continue; }
+    if(t.startsWith('>')){ flushPara(); closeList();
+      if(!inQuote){ html += '<blockquote>'; inQuote = true; }
+      html += inline(t.replace(/^>\s?/, '')) + '<br>'; continue; }
+    m = t.match(/^[-*]\s+(.*)$/);
+    if(m){ flushPara(); closeQuote();
+      if(inList !== 'ul'){ closeList(); html += '<ul>'; inList = 'ul'; }
+      html += '<li>' + inline(m[1]) + '</li>'; continue; }
+    m = t.match(/^\d+\.\s+(.*)$/);
+    if(m){ flushPara(); closeQuote();
+      if(inList !== 'ol'){ closeList(); html += '<ol>'; inList = 'ol'; }
+      html += '<li>' + inline(m[1]) + '</li>'; continue; }
+    closeList(); closeQuote();
+    para.push(t);
+  }
+  flushPara(); closeList(); closeQuote();
+  return html;
+}
+
+// 近似同步：按字数比例，音频进度驱动文稿滚动+高亮
+function setupSync(){
+  const article = document.getElementById('article');
+  blocks = Array.from(article.querySelectorAll('h1,h2,h3,p,blockquote,li'));
+  const weights = blocks.map(b => b.textContent.replace(/\s/g, '').length);
+  const total = weights.reduce((a,b)=>a+b, 0);
+  let cum = 0;
+  cumRatio = weights.map(w => { cum += w; return total > 0 ? cum / total : 0; });
+  currentBlock = -1;
+}
+
+function syncToAudio(){
+  if(!audioEl || !blocks.length) return;
+  if(!audioEl.duration) return;
+  const p = audioEl.currentTime / audioEl.duration;
+  let idx = cumRatio.findIndex(r => r >= p);
+  if(idx < 0) idx = blocks.length - 1;
+  if(idx !== currentBlock){
+    if(currentBlock >= 0) blocks[currentBlock].classList.remove('active');
+    currentBlock = idx;
+    blocks[idx].classList.add('active');
+    blocks[idx].scrollIntoView({block:'center', behavior:'smooth'});
+  }
+}
+
+async function main(){
+  if(location.protocol === 'file:'){
+    document.getElementById('termName').textContent = '请用正确方式打开';
+    document.getElementById('article').innerHTML =
+      '<div class="error">你直接双击了文件，浏览器禁止本地网页读取文稿和音频。<br><br>请双击 <b>start.command</b> 启动，或在地址栏输入：<br><b>http://127.0.0.1:8790/dedao-knowledge-map/map-final.html</b></div>';
+    document.getElementById('audioArea').innerHTML = '';
+    return;
+  }
+  if(!term){
+    document.getElementById('termName').textContent = '未指定词条';
+    document.getElementById('article').innerHTML = '<div class="error">缺少词条参数</div>';
+    document.getElementById('audioArea').innerHTML = '';
+    return;
+  }
+  document.getElementById('termName').textContent = term;
+
+  try{
+    const idx = await (await fetch('data/lecture_index.json')).json();
+    const info = idx[term];
+    if(!info){
+      document.getElementById('termSub').textContent = '该词条暂未关联讲次';
+      document.getElementById('audioArea').innerHTML = '<div class="no-audio">暂无关联讲次与文稿</div>';
+      document.getElementById('article').innerHTML = '<div class="error">该词条尚未匹配到讲次，可先在地图上查看其它词条。</div>';
+      return;
+    }
+    currentInfo = info;
+    document.getElementById('termSub').textContent =
+      (info.季 ? info.季 + '　' : '') + info.课程 + ' · 第' + info.序号 + '讲 · ' + info.讲次;
+    document.title = info.讲次 + ' - ' + term;
+    refreshAddBtn();
+
+    if(info.mp3){
+      document.getElementById('audioArea').innerHTML =
+        '<audio controls preload="metadata" src="' + info.mp3 + '"></audio>';
+      audioEl = document.getElementById('audioArea').querySelector('audio');
+      audioEl.addEventListener('timeupdate', syncToAudio);
+      audioEl.addEventListener('ended', () => { toast('本讲播放完毕'); });
+    } else {
+      document.getElementById('audioArea').innerHTML = '<div class="no-audio">本讲无音频（纯文字内容）</div>';
+    }
+
+    const mdText = await (await fetch(info.md)).text();
+    document.getElementById('article').innerHTML = renderMD(mdText);
+    setupSync();
+  }catch(err){
+    document.getElementById('article').innerHTML = '<div class="error">加载失败：' + escapeHtml(err.message) + '</div>';
+  }
+}
+
+function escapeHtml(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+main();
+</script>
+</body>
+</html>
