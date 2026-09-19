@@ -6,7 +6,7 @@
 <title>讲次</title>
 <style>
 *{box-sizing:border-box;}
-body{margin:0;background:#0a1428;color:#dce6f2;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.8;}
+body{margin:0;background:#0a1428;color:#dce6f2;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.8;overflow-x:hidden;}
 a{color:#7fb3ff;}
 .topbar{position:sticky;top:0;background:#0e1c33;border-bottom:1px solid #1d3152;padding:14px 18px;display:flex;align-items:center;gap:12px;z-index:10;}
 .back{background:#16294a;color:#cfe0f5;border:1px solid #2a4470;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px;white-space:nowrap;flex:0 0 auto;}
@@ -27,6 +27,7 @@ a{color:#7fb3ff;}
 .article h1{font-size:24px;color:#fff;border-bottom:1px solid #24395f;padding-bottom:12px;margin:0 0 18px;}
 .article h2{font-size:19px;color:#e8f0fb;margin:26px 0 12px;}
 .article h3{font-size:16px;color:#d5e4f5;margin:22px 0 10px;}
+.article{overflow-wrap:break-word;word-break:break-word;}
 .article p{margin:12px 0;transition:background .3s;}
 .article img{max-width:100%;border-radius:8px;margin:10px 0;}
 .article blockquote{margin:14px 0;padding:8px 16px;border-left:3px solid #3f6ab0;background:#132240;color:#a9c2e0;border-radius:0 8px 8px 0;transition:background .3s;}
@@ -105,7 +106,7 @@ function togglePlaylist(){
 }
 
 function inline(s){
-  s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" loading="lazy">');
+  s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="图片" loading="lazy" onerror="this.style.display=\'none\'">');
   s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
   s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
   s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
