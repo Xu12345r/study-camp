@@ -128,7 +128,7 @@ function renderCourse(){
     const isOpen = open.has(gid);
     const audioCnt = g.讲次.filter(l => l.mp3).length;
     return `
-    <div class="group ${g.type==='special'?'special':''} ${isOpen?'open':''}">
+    <div class="group ${g.type==='special'?'special':''} ${isOpen?'open':''}" data-gid="${gid}">
       <div class="group-head" onclick="toggleGroup(${gid})">
         <span class="g-icon">${groupIcon(g.type)}</span>
         <span class="g-name">${esc(g.书名)}</span>
@@ -148,14 +148,13 @@ function renderCourse(){
       </div>
     </div>`;
   }).join('');
-  // 滚动到顶部
-  window.scrollTo({top:0, behavior:'smooth'});
 }
 
 function switchCourse(i){
   curIdx = i;
   renderTabs();
   renderCourse();
+  window.scrollTo({top:0, behavior:'smooth'});
 }
 
 function toggleGroup(gid){
@@ -163,7 +162,9 @@ function toggleGroup(gid){
   const open = openState[key];
   if(open.has(gid)) open.delete(gid);
   else open.add(gid);
-  renderCourse();
+  // 只切换对应组的展开状态，不重建 DOM，避免页面滚回顶部
+  const el = document.querySelector('.group[data-gid="' + gid + '"]');
+  if(el) el.classList.toggle('open', open.has(gid));
 }
 
 function openLec(course, seq){
