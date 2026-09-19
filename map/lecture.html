@@ -65,6 +65,7 @@ a{color:#7fb3ff;}
 <script>
 const params = new URLSearchParams(location.search);
 const term = params.get('term') || '';
+let displayTerm = term;
 let currentInfo = null;
 let audioEl = null;
 let blocks = [], cumRatio = [], currentBlock = -1;
@@ -72,7 +73,7 @@ let blocks = [], cumRatio = [], currentBlock = -1;
 function goBack(){ if(history.length > 1){ history.back(); } else { location.href = 'index.html'; } }
 
 function askAI(){
-  if(term){ location.href = 'https://think.techdly.com/?q=' + encodeURIComponent(term); }
+  if(displayTerm){ location.href = 'https://think.techdly.com/?q=' + encodeURIComponent(displayTerm); }
   else { toast('请先加载词条'); }
 }
 
@@ -177,40 +178,86 @@ async function main(){
     document.getElementById('audioArea').innerHTML = '';
     return;
   }
-  if(!term){
-    document.getElementById('termName').textContent = '未指定词条';
-    document.getElementById('article').innerHTML = '<div class="error">缺少词条参数</div>';
+  const course = params.get('course');
+  const seq = params.get('seq');
+  let info = null;
+  displayTerm = term;
+
+  if(course && seq){
+    // 课程目录模式：从 courses.json 按 课程+序号 定位讲次
+    try{
+      const courses = await (await fetch('data/courses.json')).json();
+      const c = courses.find(x => x.课程 === course);
+      if(!c){
+        document.getElementById('termName').textContent = '未找到课程';
+        document.getElementById('article').innerHTML = '<div class="error">课程不存在</div>';
+        document.getElementById('audioArea').innerHTML = '';
+        return;
+      }
+      let lec = null;
+      for(const g of c.分组){ lec = g.讲次.find(l => l.序号 === seq); if(lec) break; }
+      if(!lec){
+        document.getElementById('termName').textContent = '未找到讲次';
+        document.getElementById('article').innerHTML = '<div class="error">讲次不存在</div>';
+        document.getElementById('audioArea').innerHTML = '';
+        return;
+      }
+      info = {
+        词条: lec.标题,
+        讲次: lec.标题,
+        季: c.季,
+        课程: c.课程,
+        序号: lec.序号,
+        md: lec.md,
+        mp3: lec.mp3,
+      };
+      displayTerm = lec.标题;
+    }catch(err){
+      document.getElementById('article').innerHTML = '<div class="error">加载失败：' + escapeHtml(err.message) + '</div>';
+      return;
+    }
+  } else if(term){
+    // 词条模式：查 lecture_index.json
+    try{
+      const idx = await (await fetch('data/lecture_index.json')).json();
+      info = idx[term];
+      if(info) info['词条'] = term;
+    }catch(err){
+      document.getElementById('article').innerHTML = '<div class="error">加载失败：' + escapeHtml(err.message) + '</div>';
+      return;
+    }
+  } else {
+    document.getElementById('termName').textContent = '未指定内容';
+    document.getElementById('article').innerHTML = '<div class="error">缺少参数</div>';
     document.getElementById('audioArea').innerHTML = '';
     return;
   }
-  document.getElementById('termName').textContent = term;
+
+  if(!info){
+    document.getElementById('termSub').textContent = '该词条暂未关联讲次';
+    document.getElementById('audioArea').innerHTML = '<div class="no-audio">暂无关联讲次与文稿</div>';
+    document.getElementById('article').innerHTML = '<div class="error">该词条尚未匹配到讲次，可先在地图上查看其它词条。</div>';
+    return;
+  }
+
+  currentInfo = info;
+  document.getElementById('termName').textContent = displayTerm;
+  document.getElementById('termSub').textContent =
+    (info.季 ? info.季 + '　' : '') + info.课程 + ' · 第' + info.序号 + '讲 · ' + info.讲次;
+  document.title = info.讲次 + ' - ' + displayTerm;
+  refreshAddBtn();
+
+  if(info.mp3){
+    document.getElementById('audioArea').innerHTML =
+      '<audio controls preload="metadata" src="' + info.mp3 + '"></audio>';
+    audioEl = document.getElementById('audioArea').querySelector('audio');
+    audioEl.addEventListener('timeupdate', syncToAudio);
+    audioEl.addEventListener('ended', () => { toast('本讲播放完毕'); });
+  } else {
+    document.getElementById('audioArea').innerHTML = '<div class="no-audio">本讲无音频（纯文字内容）</div>';
+  }
 
   try{
-    const idx = await (await fetch('data/lecture_index.json')).json();
-    const info = idx[term];
-    if(!info){
-      document.getElementById('termSub').textContent = '该词条暂未关联讲次';
-      document.getElementById('audioArea').innerHTML = '<div class="no-audio">暂无关联讲次与文稿</div>';
-      document.getElementById('article').innerHTML = '<div class="error">该词条尚未匹配到讲次，可先在地图上查看其它词条。</div>';
-      return;
-    }
-    info['词条'] = term;
-    currentInfo = info;
-    document.getElementById('termSub').textContent =
-      (info.季 ? info.季 + '　' : '') + info.课程 + ' · 第' + info.序号 + '讲 · ' + info.讲次;
-    document.title = info.讲次 + ' - ' + term;
-    refreshAddBtn();
-
-    if(info.mp3){
-      document.getElementById('audioArea').innerHTML =
-        '<audio controls preload="metadata" src="' + info.mp3 + '"></audio>';
-      audioEl = document.getElementById('audioArea').querySelector('audio');
-      audioEl.addEventListener('timeupdate', syncToAudio);
-      audioEl.addEventListener('ended', () => { toast('本讲播放完毕'); });
-    } else {
-      document.getElementById('audioArea').innerHTML = '<div class="no-audio">本讲无音频（纯文字内容）</div>';
-    }
-
     const mdText = await (await fetch(info.md)).text();
     document.getElementById('article').innerHTML = renderMD(mdText);
     setupSync();

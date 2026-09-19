@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>课程目录</title>
+<style>
+:root{--bg:#150a2e;--card:#1e1038;--card-hover:#2a1745;--line:#3b2a5e;--text:#e9d5ff;--sub:#9a86b8;--accent:#c084fc;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;min-height:100vh;}
+
+.topbar{position:sticky;top:0;background:rgba(21,10,46,0.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;align-items:center;gap:10px;z-index:20;}
+.topbar .back{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer;color:var(--text);font-size:13px;text-decoration:none;white-space:nowrap;}
+.topbar .back:hover{background:var(--card-hover);}
+.topbar .title{font-size:17px;font-weight:700;margin-right:auto;}
+.topbar button{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer;font-size:13px;white-space:nowrap;}
+.topbar button:hover{background:var(--card-hover);}
+.topbar .badge{background:var(--accent);color:#fff;border-radius:10px;padding:0 7px;font-size:11px;font-weight:700;margin-left:5px;}
+
+.wrap{max-width:900px;margin:0 auto;padding:0 16px 60px;}
+
+/* 季号 tab */
+.tabs{position:sticky;top:52px;background:rgba(21,10,46,0.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:10px 0;display:flex;gap:8px;overflow-x:auto;z-index:15;-webkit-overflow-scrolling:touch;}
+.tab{flex:0 0 auto;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 14px;cursor:pointer;font-size:13px;color:var(--text);text-align:center;transition:background .12s;}
+.tab:hover{background:var(--card-hover);}
+.tab .t-season{font-size:16px;font-weight:800;color:var(--accent);}
+.tab .t-name{font-size:11px;color:var(--sub);margin-top:2px;}
+.tab.active{background:var(--accent);border-color:var(--accent);}
+.tab.active .t-season{color:#1a0b2e;}
+.tab.active .t-name{color:#1a0b2e;}
+
+/* 课程头 */
+.course-head{margin:18px 0 12px;}
+.course-head h1{font-size:22px;font-weight:800;line-height:1.35;}
+.course-head .meta{color:var(--sub);font-size:13px;margin-top:5px;}
+
+/* 分组折叠 */
+.group{margin-bottom:10px;border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden;}
+.group-head{display:flex;align-items:center;gap:10px;padding:13px 16px;cursor:pointer;user-select:none;}
+.group-head:hover{background:var(--card-hover);}
+.group-head .g-icon{flex:0 0 auto;font-size:16px;}
+.group-head .g-name{flex:1;font-size:15px;font-weight:700;color:var(--text);min-width:0;}
+.group-head .g-cnt{flex:0 0 auto;font-size:12px;color:var(--sub);}
+.group-head .g-arrow{flex:0 0 auto;font-size:12px;color:var(--sub);transition:transform .2s;}
+.group.open .g-arrow{transform:rotate(90deg);}
+.group.special .g-name{color:var(--sub);font-weight:600;}
+
+.group-body{display:none;border-top:1px solid var(--line);}
+.group.open .group-body{display:block;}
+
+/* 讲次行 */
+.lec{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid rgba(59,42,94,0.4);cursor:pointer;}
+.lec:last-child{border-bottom:none;}
+.lec:hover{background:var(--card-hover);}
+.lec .l-seq{flex:0 0 auto;width:38px;font-size:12px;color:var(--sub);text-align:right;font-variant-numeric:tabular-nums;}
+.lec .l-title{flex:1;font-size:14px;color:var(--text);line-height:1.5;min-width:0;}
+.lec .l-audio{flex:0 0 auto;font-size:13px;}
+.lec.no-audio .l-title{color:var(--sub);}
+.lec.no-audio .l-audio{opacity:.4;}
+
+.hint{color:var(--sub);font-size:13px;text-align:center;margin-top:24px;}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="back" href="index.html">← 返回</a>
+  <span class="title">课程目录</span>
+  <button onclick="location.href='playlist.html'">🎧 列表<span class="badge" id="plBadge">0</span></button>
+</div>
+
+<div class="tabs" id="tabs"></div>
+
+<div class="wrap">
+  <div class="course-head">
+    <h1 id="courseName">加载中…</h1>
+    <div class="meta" id="courseMeta"></div>
+  </div>
+  <div id="groups"></div>
+  <div class="hint">点组展开讲次 · 点讲次看文稿听音频</div>
+</div>
+
+<script>
+const PL_KEY = 'dedao_playlist';
+let courses = [];
+let curIdx = 0;
+let openState = {};  // 记录每个课程当前展开的组（用 tab 切换时保持）
+
+const shortName = {
+  '万维钢·现代思维⼯具100讲': '思维100讲',
+  '万维钢·精英日课': '日课1',
+  '万维钢·精英日课2': '日课2',
+  '万维钢·精英日课3': '日课3',
+  '万维钢·精英日课4': '日课4',
+  '万维钢·精英日课5': '日课5',
+  '万维钢·精英日课6（年度日更）': '日课6',
+};
+
+function updateBadge(){
+  const pl = JSON.parse(localStorage.getItem(PL_KEY) || '[]');
+  document.getElementById('plBadge').textContent = pl.length;
+}
+
+function groupIcon(type){
+  if(type === 'book') return '📖';
+  if(type === 'flat') return '📄';
+  return '✦';
+}
+
+function renderTabs(){
+  document.getElementById('tabs').innerHTML = courses.map((c, i) => `
+    <div class="tab ${i===curIdx?'active':''}" onclick="switchCourse(${i})">
+      <div class="t-season">${c.季}</div>
+      <div class="t-name">${shortName[c.课程] || c.课程}</div>
+    </div>
+  `).join('');
+}
+
+function renderCourse(){
+  const c = courses[curIdx];
+  document.getElementById('courseName').textContent = c.课程;
+  document.getElementById('courseMeta').textContent = `${c.季} · ${c.讲数} 讲 · ${c.有音频} 讲有音频`;
+  const key = c.课程;
+  if(openState[key] === undefined) openState[key] = new Set();
+  const open = openState[key];
+  const groups = document.getElementById('groups');
+  groups.innerHTML = c.分组.map((g, gi) => {
+    const gid = gi;
+    const isOpen = open.has(gid);
+    const audioCnt = g.讲次.filter(l => l.mp3).length;
+    return `
+    <div class="group ${g.type==='special'?'special':''} ${isOpen?'open':''}">
+      <div class="group-head" onclick="toggleGroup(${gid})">
+        <span class="g-icon">${groupIcon(g.type)}</span>
+        <span class="g-name">${esc(g.书名)}</span>
+        <span class="g-cnt">${g.讲次.length}讲${audioCnt<g.讲次.length?' · '+audioCnt+'音':''}</span>
+        <span class="g-arrow">▶</span>
+      </div>
+      <div class="group-body">
+        ${g.讲次.map(l => {
+          const hasAudio = !!l.mp3;
+          return `
+          <div class="lec ${hasAudio?'':'no-audio'}" onclick="openLec('${escJs(c.课程)}','${l.序号}')">
+            <span class="l-seq">${l.序号}</span>
+            <span class="l-title">${esc(l.标题)}</span>
+            <span class="l-audio">${hasAudio?'🎧':'·'}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+  // 滚动到顶部
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function switchCourse(i){
+  curIdx = i;
+  renderTabs();
+  renderCourse();
+}
+
+function toggleGroup(gid){
+  const key = courses[curIdx].课程;
+  const open = openState[key];
+  if(open.has(gid)) open.delete(gid);
+  else open.add(gid);
+  renderCourse();
+}
+
+function openLec(course, seq){
+  location.href = 'lecture.html?course=' + encodeURIComponent(course) + '&seq=' + encodeURIComponent(seq);
+}
+
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escJs(s){ return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+
+async function init(){
+  try{
+    const r = await fetch('data/courses.json');
+    courses = await r.json();
+    renderTabs();
+    renderCourse();
+  }catch(e){
+    document.getElementById('courseName').textContent = '加载失败，请通过 start.command 访问';
+  }
+}
+
+updateBadge();
+init();
+</script>
+</body>
+</html>
