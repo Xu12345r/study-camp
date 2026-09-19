@@ -9,12 +9,12 @@
 body{margin:0;background:#0a1428;color:#dce6f2;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.8;}
 a{color:#7fb3ff;}
 .topbar{position:sticky;top:0;background:#0e1c33;border-bottom:1px solid #1d3152;padding:14px 18px;display:flex;align-items:center;gap:12px;z-index:10;}
-.back{background:#16294a;color:#cfe0f5;border:1px solid #2a4470;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:14px;white-space:nowrap;}
+.back{background:#16294a;color:#cfe0f5;border:1px solid #2a4470;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px;white-space:nowrap;flex:0 0 auto;}
 .back:hover{background:#1d3a66;}
 .top-title{flex:1;min-width:0;}
-.term-name{font-size:19px;font-weight:700;color:#fff;margin:0;}
+.term-name{font-size:16px;font-weight:700;color:#fff;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .sub{font-size:12.5px;color:#8aa3c4;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.add-btn{background:#2a5aa8;color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:14px;white-space:nowrap;}
+.add-btn{background:#2a5aa8;color:#fff;border:none;border-radius:8px;padding:7px 10px;cursor:pointer;font-size:13px;white-space:nowrap;flex:0 0 auto;}
 .add-btn:hover{background:#3570c9;}
 .add-btn.added{background:#1f7a4d;}
 .ask-ai{width:100%;margin-top:12px;background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff;border:none;border-radius:10px;padding:11px;cursor:pointer;font-size:14px;font-weight:600;}
@@ -48,7 +48,7 @@ a{color:#7fb3ff;}
     <div class="term-name" id="termName">加载中…</div>
     <div class="sub" id="termSub"></div>
   </div>
-  <button class="add-btn" id="addBtn" onclick="togglePlaylist()">+ 播放列表</button>
+  <button class="add-btn" id="addBtn" onclick="togglePlaylist()">＋列表</button>
   <button class="add-btn" onclick="location.href='playlist.html'">📋 列表</button>
 </div>
 <div class="wrap">
@@ -91,7 +91,7 @@ function refreshAddBtn(){
   const pl = getPlaylist();
   const inList = pl.some(x => x.词条 === currentInfo.词条);
   const btn = document.getElementById('addBtn');
-  btn.textContent = inList ? '✓ 已加入' : '+ 播放列表';
+  btn.textContent = inList ? '✓ 已加' : '＋列表';
   btn.classList.toggle('added', inList);
 }
 
@@ -243,7 +243,7 @@ async function main(){
   currentInfo = info;
   document.getElementById('termName').textContent = displayTerm;
   document.getElementById('termSub').textContent =
-    (info.季 ? info.季 + '　' : '') + info.课程 + ' · 第' + info.序号 + '讲 · ' + info.讲次;
+    (info.季 ? info.季 + '　' : '') + info.课程 + ' · 第' + info.序号 + '讲';
   document.title = info.讲次 + ' - ' + displayTerm;
   refreshAddBtn();
 
